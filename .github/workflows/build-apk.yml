@@ -5,6 +5,9 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -43,3 +46,11 @@ jobs:
         with:
           name: sijil-al-duyun-apk
           path: sijil-al-duyun.apk
+
+      - name: Publish release with direct APK link
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: سجل الديون ${{ github.run_number }}
+          files: sijil-al-duyun.apk
+          make_latest: true
