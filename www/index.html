@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#0f766e">
+<title>سجل الديون</title>
+<style>
+:root{
+  --bg:#f3f5f7;--card:#fff;--ink:#14212b;--muted:#6b7a86;--line:#e3e8ec;
+  --brand:#0f766e;--brand-d:#0b5a54;--debt:#c2410c;--debt-bg:#fff1e8;--pay:#15803d;--pay-bg:#e9f8ee;
+  --r:14px;--safe-b:env(safe-area-inset-bottom,0px);--safe-t:env(safe-area-inset-top,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{font-family:system-ui,"Segoe UI",Tahoma,"Noto Sans Arabic",sans-serif;background:var(--bg);color:var(--ink);font-size:16px;overscroll-behavior:none}
+button,input,select,textarea{font:inherit;color:inherit}
+.num{font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate;display:inline-block}
+header.top{position:sticky;top:0;z-index:5;background:var(--brand);color:#fff;padding:calc(12px + var(--safe-t)) 16px 12px;display:flex;align-items:center;gap:10px}
+header.top h1{font-size:19px;margin:0;flex:1;font-weight:700}
+.iconbtn{background:none;border:0;color:inherit;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;cursor:pointer;font-size:20px}
+.iconbtn:active{background:rgba(255,255,255,.15)}
+main{padding:14px 14px calc(90px + var(--safe-b))}
+.view{display:none}.view.active{display:block}
+.summary{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.stat{background:var(--card);border-radius:var(--r);padding:12px 14px;border:1px solid var(--line)}
+.stat .lbl{font-size:13px;color:var(--muted)}
+.stat .val{font-size:20px;font-weight:700;margin-top:4px;color:var(--debt)}
+.stat .sub{font-size:12px;color:var(--muted);margin-top:2px}
+.toolbar{display:flex;gap:8px;margin-bottom:10px}
+.search{flex:1;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 14px;outline:none}
+.search:focus,.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--brand)}
+select.sort{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:0 8px}
+.list{display:flex;flex-direction:column;gap:8px}
+.cust{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer}
+.cust:active{background:#f7faf9}
+.avatar{width:42px;height:42px;border-radius:50%;background:#d7efec;color:var(--brand-d);display:grid;place-items:center;font-weight:700;flex:none}
+.cust .info{flex:1;min-width:0}
+.cust .name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cust .meta{font-size:12.5px;color:var(--muted);margin-top:2px}
+.bal{text-align:left;font-weight:700;font-size:15px;line-height:1.35}
+.bal .d{color:var(--debt)}.bal .c{color:var(--pay)}.bal .z{color:var(--muted);font-weight:500;font-size:13px}
+.empty{text-align:center;color:var(--muted);padding:40px 16px}
+.empty .big{font-size:44px}
+.fab{position:fixed;left:18px;bottom:calc(78px + var(--safe-b));width:58px;height:58px;border-radius:50%;background:var(--brand);color:#fff;border:0;font-size:30px;box-shadow:0 6px 18px rgba(15,118,110,.35);cursor:pointer;z-index:6}
+nav.tabs{position:fixed;bottom:0;right:0;left:0;background:var(--card);border-top:1px solid var(--line);display:flex;padding-bottom:var(--safe-b);z-index:6}
+nav.tabs button{flex:1;background:none;border:0;padding:9px 0 8px;color:var(--muted);font-size:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+nav.tabs button .ic{font-size:21px;line-height:1}
+nav.tabs button.on{color:var(--brand);font-weight:600}
+/* customer page */
+.page{position:fixed;inset:0;background:var(--bg);z-index:10;display:none;flex-direction:column}
+.page.open{display:flex}
+.page .body{flex:1;overflow:auto;padding:14px 14px calc(100px + var(--safe-b))}
+.hero{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.hero .row{display:flex;gap:10px}
+.hero .box{flex:1;border-radius:12px;padding:10px 12px;background:#f6f8f9}
+.hero .box .lbl{font-size:12.5px;color:var(--muted)}
+.hero .box .v{font-size:21px;font-weight:700;margin-top:3px}
+.actions{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.act{background:#f2f6f6;border:0;border-radius:12px;padding:10px 4px;font-size:12.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--ink)}
+.act .ic{font-size:20px}
+.act:active{background:#e3eeec}
+.bigbtns{position:fixed;bottom:0;right:0;left:0;display:flex;gap:10px;padding:10px 14px calc(10px + var(--safe-b));background:linear-gradient(transparent,var(--bg) 30%);z-index:11}
+.bigbtns button{flex:1;border:0;border-radius:14px;padding:15px;font-size:17px;font-weight:700;color:#fff;cursor:pointer}
+.b-debt{background:var(--debt)}.b-pay{background:var(--pay)}
+h3.sec{font-size:14px;color:var(--muted);margin:16px 4px 8px;font-weight:600}
+.tx{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:10px;cursor:pointer}
+.tx .tag{font-size:12px;font-weight:700;padding:4px 9px;border-radius:20px;flex:none}
+.tx.debt .tag{background:var(--debt-bg);color:var(--debt)}.tx.pay .tag{background:var(--pay-bg);color:var(--pay)}
+.tx .mid{flex:1;min-width:0}
+.tx .note{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tx .date{font-size:12px;color:var(--muted)}
+.tx .amt{font-weight:700}
+.tx.debt .amt{color:var(--debt)}.tx.pay .amt{color:var(--pay)}
+/* sheet */
+.overlay{position:fixed;inset:0;background:rgba(10,20,25,.45);z-index:20;display:none;align-items:flex-end;justify-content:center}
+.overlay.open{display:flex}
+.sheet{background:var(--card);width:100%;max-width:560px;border-radius:20px 20px 0 0;padding:18px 16px calc(16px + var(--safe-b));max-height:92vh;overflow:auto;animation:up .18s ease-out}
+@keyframes up{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+.sheet h2{margin:0 0 14px;font-size:18px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:13px;color:var(--muted);margin-bottom:5px}
+.field input,.field select,.field textarea{width:100%;border:1px solid var(--line);border-radius:12px;padding:12px 13px;background:#fbfcfc;outline:none}
+.field textarea{min-height:64px;resize:vertical}
+.amount-in{font-size:24px!important;font-weight:700;text-align:left;direction:ltr}
+.seg{display:flex;background:#eef2f4;border-radius:12px;padding:4px;gap:4px}
+.seg button{flex:1;border:0;background:none;padding:10px;border-radius:9px;cursor:pointer;font-weight:600;color:var(--muted)}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.seg.type button.on[data-v=debt]{color:var(--debt)}.seg.type button.on[data-v=pay]{color:var(--pay)}
+.quick{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.quick button{border:1px solid var(--line);background:#fff;border-radius:20px;padding:5px 11px;font-size:13px;cursor:pointer}
+.btnrow{display:flex;gap:10px;margin-top:6px}
+.btn{flex:1;border:0;border-radius:12px;padding:13px;font-weight:700;cursor:pointer;background:var(--brand);color:#fff;font-size:16px}
+.btn.ghost{background:#eef2f4;color:var(--ink)}
+.btn.danger{background:#fee2e2;color:#b91c1c}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.card h4{margin:0 0 10px;font-size:15px}
+.kv{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed var(--line);font-size:14.5px}
+.kv:last-child{border-bottom:0}
+.kv b.d{color:var(--debt)}.kv b.c{color:var(--pay)}
+.muted{color:var(--muted);font-size:13px}
+table.st{width:100%;border-collapse:collapse;font-size:13px}
+table.st th,table.st td{padding:7px 5px;border-bottom:1px solid var(--line);text-align:right}
+table.st th{background:#f3f6f7;font-weight:600}
+table.st td.n{text-align:left;direction:ltr}
+.toast{position:fixed;bottom:calc(150px + var(--safe-b));left:50%;transform:translateX(-50%);background:#14212b;color:#fff;padding:10px 18px;border-radius:24px;font-size:14px;z-index:40;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+@media print{
+  body *{visibility:hidden}
+  #stmtPrint,#stmtPrint *{visibility:visible}
+  #stmtPrint{position:absolute;inset:0;padding:20px}
+  .noprint{display:none!important}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1 id="title">سجل الديون</h1>
+</header>
+
+<main>
+  <!-- customers -->
+  <section class="view active" id="v-home">
+    <div class="summary" id="summary"></div>
+    <div class="toolbar">
+      <input class="search" id="q" type="search" placeholder="ابحث بالاسم أو الرقم…" autocomplete="off">
+      <select class="sort" id="sort" aria-label="ترتيب">
+        <option value="bal">الأعلى ديناً</option>
+        <option value="recent">آخر حركة</option>
+        <option value="name">الاسم</option>
+      </select>
+    </div>
+    <div class="list" id="custList"></div>
+  </section>
+
+  <!-- reports -->
+  <section class="view" id="v-reports"></section>
+
+  <!-- settings -->
+  <section class="view" id="v-settings">
+    <div class="card">
+      <h4>معلومات المحل</h4>
+      <div class="field"><label>اسم المحل (يظهر برسائل التذكير وكشف الحساب)</label><input id="shopName" placeholder="مثلاً: أسواق النور"></div>
+      <div class="field"><label>رقم المحل</label><input id="shopPhone" inputmode="tel" placeholder="07xxxxxxxxx"></div>
+      <button class="btn" id="saveShop">حفظ</button>
+    </div>
+    <div class="card">
+      <h4>النسخ الاحتياطي</h4>
+      <p class="muted" style="margin-top:0">البيانات محفوظة على هذا الموبايل فقط. سوِّ نسخة احتياطية بشكل دوري واحفظها بمكان آمن (واتساب، Drive…).</p>
+      <div class="btnrow">
+        <button class="btn" id="exportBtn">تصدير نسخة</button>
+        <button class="btn ghost" id="importBtn">استيراد نسخة</button>
+      </div>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+      <p class="muted" id="lastBackup"></p>
+    </div>
+    <div class="card">
+      <h4>حول التطبيق</h4>
+      <p class="muted" style="margin:0">سجل الديون — الإصدار 1.0</p>
+    </div>
+  </section>
+</main>
+
+<button class="fab" id="fab" aria-label="إضافة زبون">+</button>
+
+<nav class="tabs">
+  <button data-tab="home" class="on"><span class="ic">👥</span>الزبائن</button>
+  <button data-tab="reports"><span class="ic">📊</span>التقارير</button>
+  <button data-tab="settings"><span class="ic">⚙️</span>الإعدادات</button>
+</nav>
+
+<!-- customer page -->
+<div class="page" id="custPage">
+  <header class="top">
+    <button class="iconbtn" id="backBtn" aria-label="رجوع">→</button>
+    <h1 id="cpName"></h1>
+    <button class="iconbtn" id="editCustBtn" aria-label="تعديل">✎</button>
+  </header>
+  <div class="body" id="cpBody"></div>
+  <div class="bigbtns">
+    <button class="b-debt" id="addDebt">＋ دين</button>
+    <button class="b-pay" id="addPay">－ تسديد</button>
+  </div>
+</div>
+
+<!-- sheet -->
+<div class="overlay" id="overlay"><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+/* ========== helpers ========== */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
+const CUR = { IQD: { name: 'دينار', sym: 'د.ع', dec: 0 }, USD: { name: 'دولار', sym: '$', dec: 2 } };
+const fmt = (n, c) => { const d = CUR[c].dec; const v = Math.abs(n); return v.toLocaleString('en-US', { minimumFractionDigits: (d && v % 1) ? 2 : 0, maximumFractionDigits: d }); };
+const money = (n, c) => `<span class="num">${fmt(n, c)}</span> ${CUR[c].sym}`;
+const moneyTxt = (n, c) => `${fmt(n, c)} ${CUR[c].name}`;
+const toEnDigits = s => String(s).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٫]/g, '.').replace(/[٬,]/g, '');
+const parseAmt = s => { const v = parseFloat(toEnDigits(s)); return isFinite(v) ? v : 0; };
+const normAr = s => toEnDigits(String(s || '').toLowerCase())
+  .replace(/[ً-ْـ]/g, '').replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/ؤ/g, 'و').replace(/ئ/g, 'ي').replace(/[گ]/g, 'ك').replace(/[چ]/g, 'ج').replace(/[پ]/g, 'ب').replace(/\s+/g, ' ').trim();
+const fmtDate = iso => { if (!iso) return ''; const [y, m, d] = iso.split('-'); return `${d}/${m}/${y}`; };
+const daysSince = iso => Math.floor((new Date(today()) - new Date(iso)) / 864e5);
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2200); }
+const isNative = () => !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+const plug = n => window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins[n];
+
+/* ========== storage (IndexedDB) ========== */
+const DB = {
+  db: null,
+  open() {
+    return new Promise((res, rej) => {
+      const r = indexedDB.open('sijil-duyun', 1);
+      r.onupgradeneeded = () => {
+        const db = r.result;
+        db.createObjectStore('customers', { keyPath: 'id' });
+        db.createObjectStore('txns', { keyPath: 'id' }).createIndex('customerId', 'customerId');
+        db.createObjectStore('meta', { keyPath: 'k' });
+      };
+      r.onsuccess = () => { this.db = r.result; res(); };
+      r.onerror = () => rej(r.error);
+    });
+  },
+  tx(store, mode, fn) {
+    return new Promise((res, rej) => {
+      const t = this.db.transaction(store, mode); const s = t.objectStore(store); const out = fn(s);
+      t.oncomplete = () => res(out && out.result !== undefined ? out.result : undefined); t.onerror = () => rej(t.error);
+    });
+  },
+  all(store) { return this.tx(store, 'readonly', s => s.getAll()); },
+  put(store, v) { return this.tx(store, 'readwrite', s => s.put(v)); },
+  del(store, k) { return this.tx(store, 'readwrite', s => s.delete(k)); },
+  clear(store) { return this.tx(store, 'readwrite', s => s.clear()); },
+};
+
+/* ========== state ========== */
+const S = { customers: [], txns: [], meta: { shopName: '', shopPhone: '', lastBackup: '' }, current: null };
+
+async function load() {
+  await DB.open();
+  S.customers = await DB.all('customers');
+  S.txns = await DB.all('txns');
+  (await DB.all('meta')).forEach(m => S.meta[m.k] = m.v);
+  try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
+}
+const setMeta = (k, v) => { S.meta[k] = v; return DB.put('meta', { k, v }); };
+
+function balances(cid) {
+  const b = { IQD: 0, USD: 0, last: null, lastPay: null, count: 0 };
+  for (const t of S.txns) if (t.customerId === cid) {
+    b[t.currency] += t.type === 'debt' ? t.amount : -t.amount;
+    b.count++;
+    if (!b.last || t.date > b.last) b.last = t.date;
+    if (t.type === 'pay' && (!b.lastPay || t.date > b.lastPay)) b.lastPay = t.date;
+  }
+  b.IQD = Math.round(b.IQD); b.USD = Math.round(b.USD * 100) / 100;
+  return b;
+}
+const custTxns = cid => S.txns.filter(t => t.customerId === cid).sort((a, b) => (b.date + b.createdAt).localeCompare(a.date + a.createdAt));
+
+/* ========== render: home ========== */
+function balHtml(b) {
+  const parts = [];
+  for (const c of ['IQD', 'USD']) if (b[c]) parts.push(`<div class="${b[c] > 0 ? 'd' : 'c'}">${b[c] < 0 ? 'له ' : ''}${money(b[c], c)}</div>`);
+  return parts.length ? parts.join('') : '<div class="z">مسدَّد</div>';
+}
+function renderSummary() {
+  let iqd = 0, usd = 0, n = 0;
+  for (const c of S.customers) { const b = balances(c.id); if (b.IQD > 0) iqd += b.IQD; if (b.USD > 0) usd += b.USD; if (b.IQD > 0 || b.USD > 0) n++; }
+  $('#summary').innerHTML = `
+    <div class="stat"><div class="lbl">ديون بالدينار</div><div class="val">${money(iqd, 'IQD')}</div><div class="sub">${n} زبون مدين</div></div>
+    <div class="stat"><div class="lbl">ديون بالدولار</div><div class="val">${money(usd, 'USD')}</div><div class="sub">${S.customers.length} زبون بالسجل</div></div>`;
+}
+function renderList() {
+  const q = normAr($('#q').value);
+  const sort = $('#sort').value;
+  let rows = S.customers.map(c => ({ c, b: balances(c.id) }));
+  if (q) rows = rows.filter(r => normAr(r.c.name).includes(q) || toEnDigits(r.c.phone || '').includes(q) || normAr(r.c.note).includes(q));
+  const score = b => b.IQD + b.USD * 1500;
+  if (sort === 'bal') rows.sort((a, b) => score(b.b) - score(a.b));
+  else if (sort === 'recent') rows.sort((a, b) => (b.b.last || b.c.createdAt || '').localeCompare(a.b.last || a.c.createdAt || ''));
+  else rows.sort((a, b) => a.c.name.localeCompare(b.c.name, 'ar'));
+  const el = $('#custList');
+  if (!S.customers.length) { el.innerHTML = `<div class="empty"><div class="big">📒</div><p>ماكو زبائن بعد.<br>اضغط <b>+</b> حتى تضيف أول زبون.</p></div>`; return; }
+  if (!rows.length) { el.innerHTML = `<div class="empty"><p>ماكو نتائج للبحث</p></div>`; return; }
+  el.innerHTML = rows.map(({ c, b }) => `
+    <div class="cust" data-id="${c.id}">
+      <div class="avatar">${esc(c.name.trim()[0] || '؟')}</div>
+      <div class="info"><div class="name">${esc(c.name)}</div>
+        <div class="meta">${b.last ? 'آخر حركة ' + fmtDate(b.last) : 'بدون حركات'}${c.phone ? ' · <span class="num">' + esc(c.phone) + '</span>' : ''}</div></div>
+      <div class="bal">${balHtml(b)}</div>
+    </div>`).join('');
+}
+function renderHome() { renderSummary(); renderList(); }
+
+/* ========== render: customer page ========== */
+function openCustomer(id) {
+  S.current = id; renderCustomer(); $('#custPage').classList.add('open'); $('#cpBody').scrollTop = 0;
+}
+function closeCustomer() { S.current = null; $('#custPage').classList.remove('open'); renderHome(); }
+function renderCustomer() {
+  const c = S.customers.find(x => x.id === S.current); if (!c) return closeCustomer();
+  const b = balances(c.id); const list = custTxns(c.id);
+  $('#cpName').textContent = c.name;
+  const box = cur => `<div class="box"><div class="lbl">${b[cur] < 0 ? 'رصيد له' : 'عليه'} (${CUR[cur].name})</div><div class="v" style="color:${b[cur] > 0 ? 'var(--debt)' : b[cur] < 0 ? 'var(--pay)' : 'var(--muted)'}">${money(b[cur], cur)}</div></div>`;
+  $('#cpBody').innerHTML = `
+    <div class="hero">
+      <div class="row">${box('IQD')}${box('USD')}</div>
+      ${c.phone || c.note ? `<p class="muted" style="margin:10px 2px 0">${c.phone ? '📞 <span class="num">' + esc(c.phone) + '</span>' : ''}${c.note ? ' · ' + esc(c.note) : ''}</p>` : ''}
+      <div class="actions">
+        <button class="act" data-act="wa"><span class="ic">💬</span>تذكير واتساب</button>
+        <button class="act" data-act="call"><span class="ic">📞</span>اتصال</button>
+        <button class="act" data-act="stmt"><span class="ic">🧾</span>كشف حساب</button>
+        <button class="act" data-act="share"><span class="ic">📤</span>مشاركة</button>
+      </div>
+    </div>
+    <h3 class="sec">الحركات (${list.length})</h3>
+    <div class="list">${list.length ? list.map(txHtml).join('') : '<div class="empty"><p>ماكو حركات. سجّل أول دين أو تسديد من الأزرار الجوّة.</p></div>'}</div>`;
+}
+const txHtml = t => `
+  <div class="tx ${t.type}" data-tx="${t.id}">
+    <span class="tag">${t.type === 'debt' ? 'دين' : 'تسديد'}</span>
+    <div class="mid"><div class="note">${esc(t.note) || (t.type === 'debt' ? 'دين' : 'تسديد')}</div><div class="date">${fmtDate(t.date)}</div></div>
+    <div class="amt">${t.type === 'debt' ? '+' : '−'}${money(t.amount, t.currency)}</div>
+  </div>`;
+
+/* ========== sheets ========== */
+function openSheet(html, onMount) { $('#sheet').innerHTML = html; $('#overlay').classList.add('open'); onMount && onMount($('#sheet')); }
+function closeSheet() { $('#overlay').classList.remove('open'); $('#sheet').innerHTML = ''; }
+$('#overlay').addEventListener('click', e => { if (e.target.id === 'overlay') closeSheet(); });
+
+function customerForm(c) {
+  const edit = !!c; c = c || { name: '', phone: '', note: '' };
+  openSheet(`
+    <h2>${edit ? 'تعديل الزبون' : 'زبون جديد'}</h2>
+    <div class="field"><label>الاسم *</label><input id="fName" value="${esc(c.name)}" autocomplete="off"></div>
+    <div class="field"><label>رقم الهاتف</label><input id="fPhone" inputmode="tel" value="${esc(c.phone)}" placeholder="07xxxxxxxxx"></div>
+    <div class="field"><label>ملاحظة (العنوان، الشغل…)</label><input id="fNote" value="${esc(c.note)}"></div>
+    <div class="btnrow"><button class="btn" id="fSave">حفظ</button><button class="btn ghost" id="fCancel">إلغاء</button></div>
+    ${edit ? '<div class="btnrow" style="margin-top:10px"><button class="btn danger" id="fDel">حذف الزبون وكل حركاته</button></div>' : ''}`,
+    s => {
+      setTimeout(() => s.querySelector('#fName').focus(), 50);
+      s.querySelector('#fCancel').onclick = closeSheet;
+      s.querySelector('#fSave').onclick = async () => {
+        const name = s.querySelector('#fName').value.trim();
+        if (!name) { toast('اكتب اسم الزبون'); return; }
+        const phone = toEnDigits(s.querySelector('#fPhone').value).replace(/[^\d+]/g, '');
+        const dup = S.customers.find(x => x.id !== c.id && normAr(x.name) === normAr(name));
+        if (dup && !confirm('اكو زبون بنفس الاسم. تريد تكمل؟')) return;
+        const obj = edit ? { ...c, name, phone, note: s.querySelector('#fNote').value.trim() } : { id: uid(), name, phone, note: s.querySelector('#fNote').value.trim(), createdAt: new Date().toISOString() };
+        await DB.put('customers', obj);
+        if (edit) Object.assign(S.customers.find(x => x.id === c.id), obj); else S.customers.push(obj);
+        closeSheet(); toast('انحفظ');
+        if (edit) renderCustomer(); else { renderHome(); openCustomer(obj.id); }
+      };
+      if (edit) s.querySelector('#fDel').onclick = async () => {
+        const n = S.txns.filter(t => t.customerId === c.id).length;
+        if (!confirm(`متأكد تريد تحذف "${c.name}"${n ? ` و ${n} حركة` : ''}؟ ما يرجع.`)) return;
+        for (const t of S.txns.filter(t => t.customerId === c.id)) await DB.del('txns', t.id);
+        await DB.del('customers', c.id);
+        S.txns = S.txns.filter(t => t.customerId !== c.id); S.customers = S.customers.filter(x => x.id !== c.id);
+        closeSheet(); closeCustomer(); toast('انحذف');
+      };
+    });
+}
+
+function txForm(type, t) {
+  const edit = !!t;
+  t = t || { type, currency: S.meta.lastCur || 'IQD', amount: '', note: '', date: today() };
+  let st = { type: t.type, currency: t.currency };
+  const quickFor = cur => cur === 'IQD' ? [1000, 5000, 10000, 25000, 50000, 100000] : [5, 10, 20, 50, 100];
+  openSheet(`
+    <h2>${edit ? 'تعديل الحركة' : 'حركة جديدة'}</h2>
+    <div class="field"><div class="seg type" id="segType"><button data-v="debt">دين (أخذ بضاعة)</button><button data-v="pay">تسديد (دفع)</button></div></div>
+    <div class="field"><div class="seg" id="segCur"><button data-v="IQD">دينار عراقي</button><button data-v="USD">دولار</button></div></div>
+    <div class="field"><label>المبلغ</label><input class="amount-in" id="fAmt" inputmode="decimal" value="${t.amount ? fmt(t.amount, t.currency) : ''}" placeholder="0" autocomplete="off">
+      <div class="quick" id="quick"></div><div class="muted" id="payAll" style="margin-top:8px"></div></div>
+    <div class="field"><label>البيان (شنو أخذ / ملاحظة)</label><input id="fNote" value="${esc(t.note)}" placeholder="مثلاً: كارتون زيت + رز"></div>
+    <div class="field"><label>التاريخ</label><input type="date" id="fDate" value="${t.date}"></div>
+    <div class="btnrow"><button class="btn" id="fSave">حفظ</button><button class="btn ghost" id="fCancel">إلغاء</button></div>
+    ${edit ? '<div class="btnrow" style="margin-top:10px"><button class="btn danger" id="fDel">حذف الحركة</button></div>' : ''}`,
+    s => {
+      const amt = s.querySelector('#fAmt');
+      const sync = () => {
+        s.querySelectorAll('#segType button').forEach(b => b.classList.toggle('on', b.dataset.v === st.type));
+        s.querySelectorAll('#segCur button').forEach(b => b.classList.toggle('on', b.dataset.v === st.currency));
+        s.querySelector('#fSave').style.background = st.type === 'debt' ? 'var(--debt)' : 'var(--pay)';
+        s.querySelector('#quick').innerHTML = quickFor(st.currency).map(v => `<button data-q="${v}">+${v.toLocaleString('en-US')}</button>`).join('');
+        const b = balances(S.current);
+        const pa = s.querySelector('#payAll');
+        if (st.type === 'pay' && b[st.currency] > 0) pa.innerHTML = `المتبقي عليه: <b>${money(b[st.currency], st.currency)}</b> — <a href="#" id="fillAll" style="color:var(--brand)">تسديد الكل</a>`;
+        else pa.innerHTML = '';
+        const fa = s.querySelector('#fillAll'); if (fa) fa.onclick = e => { e.preventDefault(); amt.value = fmt(b[st.currency], st.currency); };
+      };
+      s.querySelector('#segType').onclick = e => { const v = e.target.dataset.v; if (v) { st.type = v; sync(); } };
+      s.querySelector('#segCur').onclick = e => { const v = e.target.dataset.v; if (v) { st.currency = v; sync(); } };
+      s.querySelector('#quick').onclick = e => { const v = e.target.dataset.q; if (v) { amt.value = fmt(parseAmt(amt.value) + +v, st.currency); } };
+      amt.addEventListener('input', () => {
+        const raw = toEnDigits(amt.value).replace(/[^\d.]/g, '');
+        const [i, d] = raw.split('.');
+        const fi = i ? Number(i).toLocaleString('en-US') : '';
+        amt.value = d !== undefined && st.currency === 'USD' ? `${fi}.${d.slice(0, 2)}` : fi;
+      });
+      sync(); setTimeout(() => amt.focus(), 60);
+      s.querySelector('#fCancel').onclick = closeSheet;
+      s.querySelector('#fSave').onclick = async () => {
+        const amount = parseAmt(amt.value);
+        if (!(amount > 0)) { toast('اكتب المبلغ'); amt.focus(); return; }
+        const obj = { ...t, id: t.id || uid(), customerId: S.current, type: st.type, currency: st.currency, amount, note: s.querySelector('#fNote').value.trim(), date: s.querySelector('#fDate').value || today(), createdAt: t.createdAt || new Date().toISOString() };
+        await DB.put('txns', obj);
+        if (edit) Object.assign(S.txns.find(x => x.id === t.id), obj); else S.txns.push(obj);
+        setMeta('lastCur', st.currency);
+        closeSheet(); renderCustomer(); toast(st.type === 'debt' ? 'انسجل الدين' : 'انسجل التسديد');
+      };
+      if (edit) s.querySelector('#fDel').onclick = async () => {
+        if (!confirm('تحذف هذه الحركة؟')) return;
+        await DB.del('txns', t.id); S.txns = S.txns.filter(x => x.id !== t.id);
+        closeSheet(); renderCustomer(); toast('انحذفت');
+      };
+    });
+}
+
+/* ========== WhatsApp / call / share ========== */
+function intlPhone(p) {
+  p = toEnDigits(p || '').replace(/[^\d+]/g, '');
+  if (!p) return '';
+  if (p.startsWith('+')) return p.slice(1);
+  if (p.startsWith('00')) return p.slice(2);
+  if (p.startsWith('0')) return '964' + p.slice(1);
+  if (p.startsWith('7') && p.length === 10) return '964' + p;
+  return p;
+}
+function openExternal(url) {
+  if (isNative()) { window.location.href = url; } else window.open(url, '_blank');
+}
+function reminderText(c) {
+  const b = balances(c.id); const lines = [];
+  for (const cur of ['IQD', 'USD']) if (b[cur] > 0) lines.push('• ' + moneyTxt(b[cur], cur));
+  const shop = S.meta.shopName ? ` لدى ${S.meta.shopName}` : '';
+  if (!lines.length) return `مرحباً ${c.name}،\nحسابك${shop} مسدَّد بالكامل. شكراً لتعاملك ويانا 🌹`;
+  return `مرحباً ${c.name}،\nنذكّرك بأن المبلغ المتبقي بذمتك${shop}:\n${lines.join('\n')}\n${b.lastPay ? 'آخر تسديد: ' + fmtDate(b.lastPay) + '\n' : ''}نرجو التسديد بأقرب وقت. شكراً لك 🌹`;
+}
+function statementText(c) {
+  const list = custTxns(c.id).slice().reverse(); const b = balances(c.id);
+  let s = `كشف حساب: ${c.name}${S.meta.shopName ? '\n' + S.meta.shopName : ''}\nبتاريخ ${fmtDate(today())}\n----------------\n`;
+  for (const t of list) s += `${fmtDate(t.date)} | ${t.type === 'debt' ? 'دين' : 'تسديد'} ${moneyTxt(t.amount, t.currency)}${t.note ? ' | ' + t.note : ''}\n`;
+  s += '----------------\nالرصيد المتبقي:\n';
+  for (const cur of ['IQD', 'USD']) if (b[cur] || cur === 'IQD') s += `• ${b[cur] < 0 ? 'له ' : ''}${moneyTxt(b[cur], cur)}\n`;
+  return s;
+}
+function sendWhatsApp(c, text) {
+  const ph = intlPhone(c.phone);
+  openExternal(`https://wa.me/${ph}?text=${encodeURIComponent(text)}`);
+}
+async function shareText(text, title) {
+  const Share = plug('Share');
+  try {
+    if (Share) return await Share.share({ title, text, dialogTitle: title });
+    if (navigator.share) return await navigator.share({ title, text });
+  } catch (e) { return; }
+  try { await navigator.clipboard.writeText(text); toast('انسخ النص'); } catch (e) { prompt('انسخ النص:', text); }
+}
+
+function statementSheet(c) {
+  const b = balances(c.id);
+  const all = custTxns(c.id).slice().reverse();
+  const curs = ['IQD', 'USD'].filter(cur => all.some(t => t.currency === cur));
+  const tables = curs.map(cur => {
+    let run = 0;
+    const rows = all.filter(t => t.currency === cur).map(t => {
+      run += t.type === 'debt' ? t.amount : -t.amount;
+      return `<tr><td>${fmtDate(t.date)}</td><td>${esc(t.note) || (t.type === 'debt' ? 'دين' : 'تسديد')}</td><td class="n">${t.type === 'debt' ? fmt(t.amount, cur) : ''}</td><td class="n">${t.type === 'pay' ? fmt(t.amount, cur) : ''}</td><td class="n"><b>${run < 0 ? '-' : ''}${fmt(run, cur)}</b></td></tr>`;
+    }).join('');
+    return `<h4 style="margin:14px 0 6px">بالـ${CUR[cur].name}</h4>
+      <table class="st"><thead><tr><th>التاريخ</th><th>البيان</th><th>دين</th><th>تسديد</th><th>الرصيد</th></tr></thead><tbody>${rows}</tbody></table>
+      <div class="kv"><span>الرصيد النهائي</span><b class="${b[cur] > 0 ? 'd' : 'c'}">${b[cur] < 0 ? 'له ' : ''}${money(b[cur], cur)}</b></div>`;
+  }).join('');
+  openSheet(`
+    <div id="stmtPrint">
+      <h2 style="margin-bottom:4px">كشف حساب — ${esc(c.name)}</h2>
+      <div class="muted">${S.meta.shopName ? esc(S.meta.shopName) + ' · ' : ''}بتاريخ ${fmtDate(today())}${c.phone ? ' · <span class="num">' + esc(c.phone) + '</span>' : ''}</div>
+      ${tables || '<div class="empty"><p>ماكو حركات</p></div>'}
+    </div>
+    <div class="btnrow noprint" style="margin-top:16px">
+      <button class="btn" id="sWa" style="background:#16a34a">إرسال واتساب</button>
+      <button class="btn ghost" id="sShare">مشاركة</button>
+      ${isNative() ? '' : '<button class="btn ghost" id="sPrint">طباعة</button>'}
+    </div>
+    <div class="btnrow noprint"><button class="btn ghost" id="sClose">إغلاق</button></div>`,
+    s => {
+      s.querySelector('#sWa').onclick = () => sendWhatsApp(c, statementText(c));
+      s.querySelector('#sShare').onclick = () => shareText(statementText(c), 'كشف حساب ' + c.name);
+      const p = s.querySelector('#sPrint'); if (p) p.onclick = () => window.print();
+      s.querySelector('#sClose').onclick = closeSheet;
+    });
+}
+
+/* ========== reports ========== */
+function renderReports() {
+  const tot = { IQD: { owed: 0, credit: 0 }, USD: { owed: 0, credit: 0 } };
+  const rows = S.customers.map(c => ({ c, b: balances(c.id) }));
+  for (const { b } of rows) for (const cur of ['IQD', 'USD']) { if (b[cur] > 0) tot[cur].owed += b[cur]; else tot[cur].credit -= b[cur]; }
+  const month = today().slice(0, 7);
+  const m = { IQD: { debt: 0, pay: 0 }, USD: { debt: 0, pay: 0 } };
+  for (const t of S.txns) if (t.date.slice(0, 7) === month) m[t.currency][t.type] += t.amount;
+  const debtors = rows.filter(r => r.b.IQD > 0 || r.b.USD > 0);
+  const late = debtors.filter(r => daysSince(r.b.lastPay || r.b.last || today()) >= 30)
+    .sort((a, b) => (a.b.lastPay || a.b.last).localeCompare(b.b.lastPay || b.b.last));
+  const top = debtors.slice().sort((a, b) => (b.b.IQD + b.b.USD * 1500) - (a.b.IQD + a.b.USD * 1500)).slice(0, 10);
+  const lineB = r => `<div class="kv" data-id="${r.c.id}" style="cursor:pointer"><span>${esc(r.c.name)}</span><b class="d">${['IQD', 'USD'].filter(c => r.b[c] > 0).map(c => money(r.b[c], c)).join(' + ')}</b></div>`;
+  $('#v-reports').innerHTML = `
+    <div class="card"><h4>إجمالي الديون المستحقة</h4>
+      <div class="kv"><span>بالدينار</span><b class="d">${money(tot.IQD.owed, 'IQD')}</b></div>
+      <div class="kv"><span>بالدولار</span><b class="d">${money(tot.USD.owed, 'USD')}</b></div>
+      <div class="kv"><span>عدد الزبائن المدينين</span><b>${debtors.length}</b></div>
+      ${tot.IQD.credit || tot.USD.credit ? `<div class="kv"><span>أرصدة للزبائن (دفعوا زيادة)</span><b class="c">${[tot.IQD.credit ? money(tot.IQD.credit, 'IQD') : '', tot.USD.credit ? money(tot.USD.credit, 'USD') : ''].filter(Boolean).join(' + ')}</b></div>` : ''}
+    </div>
+    <div class="card"><h4>هذا الشهر</h4>
+      <div class="kv"><span>ديون جديدة (دينار)</span><b class="d">${money(m.IQD.debt, 'IQD')}</b></div>
+      <div class="kv"><span>تسديدات (دينار)</span><b class="c">${money(m.IQD.pay, 'IQD')}</b></div>
+      <div class="kv"><span>ديون جديدة (دولار)</span><b class="d">${money(m.USD.debt, 'USD')}</b></div>
+      <div class="kv"><span>تسديدات (دولار)</span><b class="c">${money(m.USD.pay, 'USD')}</b></div>
+    </div>
+    <div class="card"><h4>أعلى 10 مدينين</h4>${top.length ? top.map(lineB).join('') : '<p class="muted">ماكو ديون</p>'}</div>
+    <div class="card"><h4>متأخرين — ما سددوا من 30 يوم أو أكثر</h4>
+      ${late.length ? late.map(r => `<div class="kv" data-id="${r.c.id}" style="cursor:pointer"><span>${esc(r.c.name)}<br><small class="muted">${r.b.lastPay ? 'آخر تسديد ' + fmtDate(r.b.lastPay) : 'ما سدد أبد'}</small></span><b class="d">${['IQD', 'USD'].filter(c => r.b[c] > 0).map(c => money(r.b[c], c)).join(' + ')}</b></div>`).join('') : '<p class="muted">ماكو متأخرين 👍</p>'}
+    </div>`;
+}
+$('#v-reports').addEventListener('click', e => { const r = e.target.closest('[data-id]'); if (r) openCustomer(r.dataset.id); });
+
+/* ========== backup ========== */
+async function exportBackup() {
+  const data = JSON.stringify({ app: 'sijil-al-duyun', version: 1, exportedAt: new Date().toISOString(), meta: S.meta, customers: S.customers, txns: S.txns });
+  const name = `sijil-duyun-${today()}.json`;
+  const Fs = plug('Filesystem'), Share = plug('Share');
+  try {
+    if (isNative() && Fs && Share) {
+      const r = await Fs.writeFile({ path: name, data, directory: 'CACHE', encoding: 'utf8' });
+      await Share.share({ title: 'نسخة احتياطية - سجل الديون', url: r.uri, dialogTitle: 'احفظ النسخة الاحتياطية' });
+    } else {
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' })); a.download = name; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+    }
+    await setMeta('lastBackup', new Date().toISOString()); renderSettings(); toast('تم تصدير النسخة');
+  } catch (e) { if (!/cancel/i.test(String(e && e.message))) toast('صار خطأ بالتصدير'); }
+}
+async function importBackup(file) {
+  try {
+    const d = JSON.parse(await file.text());
+    if (d.app !== 'sijil-al-duyun' || !Array.isArray(d.customers) || !Array.isArray(d.txns)) throw new Error('bad');
+    if (!confirm(`النسخة بيها ${d.customers.length} زبون و ${d.txns.length} حركة.\nراح تستبدل كل البيانات الحالية. تكمل؟`)) return;
+    await DB.clear('customers'); await DB.clear('txns');
+    for (const c of d.customers) await DB.put('customers', c);
+    for (const t of d.txns) await DB.put('txns', t);
+    for (const [k, v] of Object.entries(d.meta || {})) await setMeta(k, v);
+    S.customers = d.customers; S.txns = d.txns;
+    renderAll(); toast('تم الاستيراد');
+  } catch (e) { toast('الملف مو نسخة صالحة'); }
+}
+function renderSettings() {
+  $('#shopName').value = S.meta.shopName || ''; $('#shopPhone').value = S.meta.shopPhone || '';
+  const lb = S.meta.lastBackup;
+  $('#lastBackup').innerHTML = lb ? `آخر نسخة: ${fmtDate(lb.slice(0, 10))}${daysSince(lb.slice(0, 10)) > 7 ? ' — <b style="color:var(--debt)">صار وقت نسخة جديدة</b>' : ''}` : '<b style="color:var(--debt)">ما سويت نسخة احتياطية بعد</b>';
+}
+
+/* ========== navigation ========== */
+let tab = 'home';
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'v-' + t));
+  $('#fab').style.display = t === 'home' ? '' : 'none';
+  $('#title').textContent = { home: 'سجل الديون', reports: 'التقارير', settings: 'الإعدادات' }[t];
+  if (t === 'reports') renderReports(); if (t === 'settings') renderSettings(); if (t === 'home') renderHome();
+  window.scrollTo(0, 0);
+}
+function renderAll() { renderHome(); if (tab === 'reports') renderReports(); if (tab === 'settings') renderSettings(); if (S.current) renderCustomer(); }
+function goBack() {
+  if ($('#overlay').classList.contains('open')) { closeSheet(); return true; }
+  if (S.current) { closeCustomer(); return true; }
+  if (tab !== 'home') { setTab('home'); return true; }
+  return false;
+}
+
+/* ========== events ========== */
+document.querySelector('nav.tabs').onclick = e => { const b = e.target.closest('button'); if (b) setTab(b.dataset.tab); };
+$('#fab').onclick = () => customerForm();
+$('#q').oninput = renderList;
+$('#sort').onchange = renderList;
+$('#custList').onclick = e => { const r = e.target.closest('.cust'); if (r) openCustomer(r.dataset.id); };
+$('#backBtn').onclick = closeCustomer;
+$('#editCustBtn').onclick = () => customerForm(S.customers.find(c => c.id === S.current));
+$('#addDebt').onclick = () => txForm('debt');
+$('#addPay').onclick = () => txForm('pay');
+$('#cpBody').onclick = e => {
+  const c = S.customers.find(x => x.id === S.current);
+  const tx = e.target.closest('.tx'); if (tx) return txForm(null, S.txns.find(t => t.id === tx.dataset.tx));
+  const a = e.target.closest('.act'); if (!a) return;
+  const act = a.dataset.act;
+  if (act === 'wa') { if (!c.phone) { toast('ضيف رقم الزبون أول'); return customerForm(c); } sendWhatsApp(c, reminderText(c)); }
+  if (act === 'call') { if (!c.phone) { toast('ضيف رقم الزبون أول'); return customerForm(c); } openExternal('tel:' + toEnDigits(c.phone)); }
+  if (act === 'stmt') statementSheet(c);
+  if (act === 'share') shareText(reminderText(c), c.name);
+};
+$('#saveShop').onclick = async () => { await setMeta('shopName', $('#shopName').value.trim()); await setMeta('shopPhone', $('#shopPhone').value.trim()); toast('انحفظ'); };
+$('#exportBtn').onclick = exportBackup;
+$('#importBtn').onclick = () => $('#importFile').click();
+$('#importFile').onchange = e => { const f = e.target.files[0]; if (f) importBackup(f); e.target.value = ''; };
+document.addEventListener('keydown', e => { if (e.key === 'Escape') goBack(); });
+
+/* Android hardware back button */
+function hookBack() {
+  const App = plug('App');
+  if (App && App.addListener) App.addListener('backButton', () => { if (!goBack()) App.exitApp(); });
+}
+
+load().then(() => { renderHome(); hookBack(); }).catch(e => { document.body.innerHTML = '<p style="padding:20px">تعذر فتح قاعدة البيانات: ' + esc(e && e.message) + '</p>'; });
+</script>
+</body>
+</html>

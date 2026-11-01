@@ -1,0 +1,6 @@
+{
+  "appId": "com.hayder.sijilduyun",
+  "appName": "سجل الديون",
+  "webDir": "www",
+  "android": { "backgroundColor": "#0f766e" }
+}

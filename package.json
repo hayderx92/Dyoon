@@ -1,0 +1,23 @@
+{
+  "name": "sijil-al-duyun",
+  "version": "1.0.0",
+  "private": true,
+  "description": "سجل الديون — تطبيق أندرويد لإدارة ديون المحل",
+  "scripts": {
+    "android:init": "cap add android",
+    "icons": "capacitor-assets generate --android",
+    "sync": "cap sync android",
+    "build:apk": "cd android && ./gradlew assembleRelease"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.6.0",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.6.0",
+    "@capacitor/filesystem": "^8.1.5",
+    "@capacitor/share": "^8.0.3"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^4.0.0",
+    "@capacitor/cli": "^8.6.0"
+  }
+}

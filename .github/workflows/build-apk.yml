@@ -1,0 +1,47 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install packages
+        run: npm ci || npm install
+
+      - name: Create Android project
+        run: |
+          npx cap add android
+          npx capacitor-assets generate --android
+          node scripts/patch-android.js
+          npx cap sync android
+
+      - name: Build signed APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk sijil-al-duyun.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sijil-al-duyun-apk
+          path: sijil-al-duyun.apk
