@@ -13,7 +13,7 @@ if (!s.includes('signingConfigs')) {
     }
     ${m}
             signingConfig signingConfigs.release`);
-  s = s.replace(/versionCode \d+/, 'versionCode (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInteger()');
+  s = s.replace(/versionCode \d+/, 'versionCode Integer.parseInt(System.getenv("GITHUB_RUN_NUMBER") ?: "1")');
   fs.writeFileSync(p, s);
 }
 if (!s.includes('signingConfig signingConfigs.release')) { console.error('patch failed'); process.exit(1); }
