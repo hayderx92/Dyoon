@@ -179,6 +179,8 @@ table.st td.n{text-align:left;direction:ltr}
         <input type="file" id="logoFile" accept="image/*" hidden></div>
       <div class="field"><label>اسم المحل (يظهر برسائل التذكير وكشف الحساب)</label><input id="shopName" placeholder="مثلاً: أسواق النور"></div>
       <div class="field"><label>رقم المحل</label><input id="shopPhone" inputmode="tel" placeholder="07xxxxxxxxx"></div>
+      <div class="field"><label>تطبيق الواتساب المستخدم لإرسال الكشف</label>
+        <select id="waApp"><option value="whatsapp">واتساب العادي</option><option value="business">واتساب للأعمال (Business)</option></select></div>
       <button class="btn" id="saveShop">حفظ</button>
     </div>
     <div class="card">
@@ -193,7 +195,7 @@ table.st td.n{text-align:left;direction:ltr}
     </div>
     <div class="card">
       <h4>حول التطبيق</h4>
-      <p class="muted" style="margin:0">سجل الديون — الإصدار 1.1</p>
+      <p class="muted" style="margin:0">سجل الديون — الإصدار 1.2</p>
     </div>
   </section>
 </main>
@@ -526,15 +528,17 @@ function statementSheet(c) {
       ${tables || '<div class="empty"><p>ماكو حركات</p></div>'}
     </div>
     <div class="btnrow noprint" style="margin-top:16px">
-      <button class="btn" id="sPdf">📄 مشاركة PDF</button>
+      <button class="btn" id="sPdf" style="background:#16a34a">📄 إرسال PDF للزبون بالواتساب</button>
     </div>
+    <div class="btnrow noprint"><button class="btn ghost" id="sPdfAny">مشاركة PDF بتطبيق آخر</button></div>
     <div class="btnrow noprint">
       <button class="btn ghost" id="sWa">نص واتساب</button>
       <button class="btn ghost" id="sClose">إغلاق</button>
     </div>`,
     s => {
       s.querySelector('#sWa').onclick = () => sendWhatsApp(c, statementText(c));
-      s.querySelector('#sPdf').onclick = () => sharePdf(c);
+      s.querySelector('#sPdf').onclick = () => sharePdf(c, true);
+      s.querySelector('#sPdfAny').onclick = () => sharePdf(c, false);
       s.querySelector('#sClose').onclick = closeSheet;
     });
 }
@@ -602,7 +606,7 @@ async function importBackup(file) {
   } catch (e) { toast('الملف مو نسخة صالحة'); }
 }
 function renderSettings() {
-  $('#shopName').value = S.meta.shopName || ''; $('#shopPhone').value = S.meta.shopPhone || ''; renderLogo();
+  $('#shopName').value = S.meta.shopName || ''; $('#shopPhone').value = S.meta.shopPhone || ''; renderLogo(); $('#waApp').value = S.meta.waApp || 'whatsapp';
   const lb = S.meta.lastBackup;
   $('#lastBackup').innerHTML = lb ? `آخر نسخة: ${fmtDate(lb.slice(0, 10))}${daysSince(lb.slice(0, 10)) > 7 ? ' — <b style="color:var(--debt)">صار وقت نسخة جديدة</b>' : ''}` : '<b style="color:var(--debt)">ما سويت نسخة احتياطية بعد</b>';
 }
@@ -676,7 +680,10 @@ async function makeStatementPdf(c) {
     return pdf;
   } finally { host.remove(); }
 }
-async function sharePdf(c) {
+function waSharePlugin() {
+  try { return isNative() && window.Capacitor.registerPlugin ? window.Capacitor.registerPlugin('WaShare') : null; } catch (e) { return null; }
+}
+async function sharePdf(c, direct) {
   const busy = $('#busy'); busy.classList.add('on');
   try {
     const pdf = await makeStatementPdf(c);
@@ -686,6 +693,11 @@ async function sharePdf(c) {
       const data = pdf.output('datauristring').split(',')[1];
       const r = await Fs.writeFile({ path: name, data, directory: 'CACHE' });
       busy.classList.remove('on');
+      const Wa = waSharePlugin();
+      if (direct && c.phone && Wa) {
+        try { await Wa.sendFile({ path: r.uri, phone: intlPhone(c.phone), prefer: S.meta.waApp || 'whatsapp' }); return; }
+        catch (e) { toast(/NO_WHATSAPP|not installed/i.test(String(e && (e.code || e.message))) ? 'الواتساب مو منصّب — اختار التطبيق' : 'تعذر فتح محادثة الزبون — اختار يدوياً'); }
+      } else if (direct && !c.phone) toast('ما مسجل رقم للزبون — اختار المستلم يدوياً');
       await Share.share({ title: 'كشف حساب ' + c.name, url: r.uri, dialogTitle: 'إرسال كشف الحساب' });
     } else {
       const blob = pdf.output('blob');
@@ -757,7 +769,7 @@ $('#cpBody').onclick = e => {
   if (act === 'stmt') statementSheet(c);
   if (act === 'share') shareText(reminderText(c), c.name);
 };
-$('#saveShop').onclick = async () => { await setMeta('shopName', $('#shopName').value.trim()); await setMeta('shopPhone', $('#shopPhone').value.trim()); toast('انحفظ'); };
+$('#saveShop').onclick = async () => { await setMeta('waApp', $('#waApp').value); await setMeta('shopName', $('#shopName').value.trim()); await setMeta('shopPhone', $('#shopPhone').value.trim()); toast('انحفظ'); };
 $('#exportBtn').onclick = exportBackup;
 $('#logoPick').onclick = () => $('#logoFile').click();
 $('#logoFile').onchange = e => { const f = e.target.files[0]; if (f) loadLogo(f); e.target.value = ''; };
