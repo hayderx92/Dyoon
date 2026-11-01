@@ -14,7 +14,9 @@
     "@capacitor/app": "^8.1.2",
     "@capacitor/core": "^8.6.0",
     "@capacitor/filesystem": "^8.1.5",
-    "@capacitor/share": "^8.0.3"
+    "@capacitor/share": "^8.0.3",
+    "html-to-image": "^1.11.13",
+    "jspdf": "^4.2.1"
   },
   "devDependencies": {
     "@capacitor/assets": "^4.0.0",

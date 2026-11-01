@@ -105,6 +105,36 @@ table.st th{background:#f3f6f7;font-weight:600}
 table.st td.n{text-align:left;direction:ltr}
 .toast{position:fixed;bottom:calc(150px + var(--safe-b));left:50%;transform:translateX(-50%);background:#14212b;color:#fff;padding:10px 18px;border-radius:24px;font-size:14px;z-index:40;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1}
+.logo-prev{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.logo-prev .ph{width:72px;height:72px;border-radius:14px;border:1px dashed #c7d2d8;display:grid;place-items:center;overflow:hidden;background:#fafbfb;color:var(--muted);font-size:12px;text-align:center}
+.logo-prev .ph img{width:100%;height:100%;object-fit:contain}
+.busy{position:fixed;inset:0;background:rgba(255,255,255,.75);z-index:50;display:none;place-items:center;font-weight:600}
+.busy.on{display:grid}
+/* PDF pages (rendered off-screen) */
+.pdfhost{position:fixed;left:-20000px;top:0}
+.pdfpage{width:794px;height:1123px;background:#fff;color:#1b2730;padding:44px 46px 0;position:relative;font-family:system-ui,"Noto Sans Arabic",Tahoma,sans-serif;direction:rtl;box-sizing:border-box}
+.pdfpage .pb{height:1000px;overflow:hidden}
+.pdfpage .pf{position:absolute;bottom:26px;right:46px;left:46px;display:flex;justify-content:space-between;font-size:11px;color:#8a979f;border-top:1px solid #e6ebee;padding-top:8px}
+.ph-head{display:flex;align-items:center;gap:16px;padding-bottom:16px;border-bottom:3px solid #0f766e;margin-bottom:18px}
+.ph-head img{width:76px;height:76px;object-fit:contain;border-radius:10px}
+.ph-head .sn{font-size:24px;font-weight:800;color:#0f766e}
+.ph-head .sp{font-size:13px;color:#5b6b75;margin-top:3px}
+.ph-head .doc{margin-right:auto;text-align:left}
+.ph-head .doc b{display:block;font-size:20px}
+.ph-head .doc span{font-size:12.5px;color:#5b6b75}
+.ph-cust{display:flex;justify-content:space-between;background:#f3f7f7;border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:14px}
+.ph-sum{display:flex;gap:12px;margin-bottom:18px}
+.ph-sum div{flex:1;border:1px solid #e3e8ec;border-radius:10px;padding:10px 14px}
+.ph-sum small{display:block;color:#6b7a86;font-size:12px}
+.ph-sum b{font-size:20px}
+.ph-sec{font-size:15px;font-weight:700;margin:6px 0 8px;color:#0b5a54}
+.ph-t{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px}
+.ph-t th{background:#0f766e;color:#fff;padding:8px 8px;text-align:right;font-weight:600}
+.ph-t td{padding:7px 8px;border-bottom:1px solid #e9eef0}
+.ph-t tr:nth-child(even) td{background:#f8fafa}
+.ph-t td.n,.ph-t th.n{text-align:left;direction:ltr}
+.ph-t td.d{color:#c2410c}.ph-t td.p{color:#15803d}
+.ph-t tr.tot td{background:#eef6f5!important;font-weight:800;border-top:2px solid #0f766e}
 @media print{
   body *{visibility:hidden}
   #stmtPrint,#stmtPrint *{visibility:visible}
@@ -141,6 +171,12 @@ table.st td.n{text-align:left;direction:ltr}
   <section class="view" id="v-settings">
     <div class="card">
       <h4>معلومات المحل</h4>
+      <div class="logo-prev"><div class="ph" id="logoPh">بدون شعار</div>
+        <div style="display:flex;flex-direction:column;gap:8px;flex:1">
+          <button class="btn ghost" id="logoPick" style="padding:10px">اختيار شعار المحل</button>
+          <button class="btn danger" id="logoDel" style="padding:8px;display:none">إزالة الشعار</button>
+        </div>
+        <input type="file" id="logoFile" accept="image/*" hidden></div>
       <div class="field"><label>اسم المحل (يظهر برسائل التذكير وكشف الحساب)</label><input id="shopName" placeholder="مثلاً: أسواق النور"></div>
       <div class="field"><label>رقم المحل</label><input id="shopPhone" inputmode="tel" placeholder="07xxxxxxxxx"></div>
       <button class="btn" id="saveShop">حفظ</button>
@@ -157,7 +193,7 @@ table.st td.n{text-align:left;direction:ltr}
     </div>
     <div class="card">
       <h4>حول التطبيق</h4>
-      <p class="muted" style="margin:0">سجل الديون — الإصدار 1.0</p>
+      <p class="muted" style="margin:0">سجل الديون — الإصدار 1.1</p>
     </div>
   </section>
 </main>
@@ -187,6 +223,9 @@ table.st td.n{text-align:left;direction:ltr}
 <!-- sheet -->
 <div class="overlay" id="overlay"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
+<div class="busy" id="busy">جاري تجهيز ملف PDF…</div>
+<script src="lib/html-to-image.js"></script>
+<script src="lib/jspdf.umd.min.js"></script>
 
 <script>
 'use strict';
@@ -481,20 +520,21 @@ function statementSheet(c) {
   }).join('');
   openSheet(`
     <div id="stmtPrint">
+      ${S.meta.logo ? `<img src="${S.meta.logo}" style="width:54px;height:54px;object-fit:contain;border-radius:10px;float:left">` : ''}
       <h2 style="margin-bottom:4px">كشف حساب — ${esc(c.name)}</h2>
       <div class="muted">${S.meta.shopName ? esc(S.meta.shopName) + ' · ' : ''}بتاريخ ${fmtDate(today())}${c.phone ? ' · <span class="num">' + esc(c.phone) + '</span>' : ''}</div>
       ${tables || '<div class="empty"><p>ماكو حركات</p></div>'}
     </div>
     <div class="btnrow noprint" style="margin-top:16px">
-      <button class="btn" id="sWa" style="background:#16a34a">إرسال واتساب</button>
-      <button class="btn ghost" id="sShare">مشاركة</button>
-      ${isNative() ? '' : '<button class="btn ghost" id="sPrint">طباعة</button>'}
+      <button class="btn" id="sPdf">📄 مشاركة PDF</button>
     </div>
-    <div class="btnrow noprint"><button class="btn ghost" id="sClose">إغلاق</button></div>`,
+    <div class="btnrow noprint">
+      <button class="btn ghost" id="sWa">نص واتساب</button>
+      <button class="btn ghost" id="sClose">إغلاق</button>
+    </div>`,
     s => {
       s.querySelector('#sWa').onclick = () => sendWhatsApp(c, statementText(c));
-      s.querySelector('#sShare').onclick = () => shareText(statementText(c), 'كشف حساب ' + c.name);
-      const p = s.querySelector('#sPrint'); if (p) p.onclick = () => window.print();
+      s.querySelector('#sPdf').onclick = () => sharePdf(c);
       s.querySelector('#sClose').onclick = closeSheet;
     });
 }
@@ -562,9 +602,120 @@ async function importBackup(file) {
   } catch (e) { toast('الملف مو نسخة صالحة'); }
 }
 function renderSettings() {
-  $('#shopName').value = S.meta.shopName || ''; $('#shopPhone').value = S.meta.shopPhone || '';
+  $('#shopName').value = S.meta.shopName || ''; $('#shopPhone').value = S.meta.shopPhone || ''; renderLogo();
   const lb = S.meta.lastBackup;
   $('#lastBackup').innerHTML = lb ? `آخر نسخة: ${fmtDate(lb.slice(0, 10))}${daysSince(lb.slice(0, 10)) > 7 ? ' — <b style="color:var(--debt)">صار وقت نسخة جديدة</b>' : ''}` : '<b style="color:var(--debt)">ما سويت نسخة احتياطية بعد</b>';
+}
+
+/* ========== PDF statement ========== */
+function pdfHeader(c, b) {
+  const shop = S.meta.shopName || 'كشف حساب';
+  return `<div class="ph-head">
+      ${S.meta.logo ? `<img src="${S.meta.logo}">` : ''}
+      <div><div class="sn">${esc(shop)}</div>${S.meta.shopPhone ? `<div class="sp">📞 <span class="num">${esc(S.meta.shopPhone)}</span></div>` : ''}</div>
+      <div class="doc"><b>كشف حساب</b><span>بتاريخ ${fmtDate(today())}</span></div>
+    </div>
+    <div class="ph-cust"><span>الزبون: <b>${esc(c.name)}</b></span>${c.phone ? `<span>الهاتف: <span class="num">${esc(c.phone)}</span></span>` : ''}</div>
+    <div class="ph-sum">${['IQD', 'USD'].map(cur => `<div><small>${b[cur] < 0 ? 'رصيد له' : 'المتبقي عليه'} (${CUR[cur].name})</small><b style="color:${b[cur] > 0 ? '#c2410c' : b[cur] < 0 ? '#15803d' : '#6b7a86'}">${money(b[cur], cur)}</b></div>`).join('')}</div>`;
+}
+function buildPdfPages(c) {
+  const b = balances(c.id);
+  const all = custTxns(c.id).slice().reverse();
+  const host = document.createElement('div'); host.className = 'pdfhost'; document.body.appendChild(host);
+  const pages = []; let body;
+  const LIMIT = 1000;
+  const newPage = () => {
+    const pg = document.createElement('div'); pg.className = 'pdfpage';
+    pg.innerHTML = '<div class="pb"></div><div class="pf"><span class="pn"></span><span>صادر من تطبيق سجل الديون</span></div>';
+    host.appendChild(pg); pages.push(pg); body = pg.querySelector('.pb');
+  };
+  const fits = () => body.scrollHeight <= LIMIT;
+  newPage();
+  body.innerHTML = pdfHeader(c, b);
+  const head = '<thead><tr><th style="width:90px">التاريخ</th><th>البيان</th><th class="n" style="width:105px">دين</th><th class="n" style="width:105px">تسديد</th><th class="n" style="width:115px">الرصيد</th></tr></thead>';
+  const curs = ['IQD', 'USD'].filter(cur => all.some(t => t.currency === cur));
+  if (!curs.length) body.insertAdjacentHTML('beforeend', '<p style="text-align:center;color:#6b7a86;margin-top:40px">لا توجد حركات</p>');
+  for (const cur of curs) {
+    let tbody;
+    const startTable = cont => {
+      body.insertAdjacentHTML('beforeend', `<div class="ph-sec">الحركات بالـ${CUR[cur].name}${cont ? ' (تابع)' : ''}</div><table class="ph-t">${head}<tbody></tbody></table>`);
+      tbody = body.querySelector('table.ph-t:last-of-type tbody');
+      if (!fits()) { body.lastElementChild.remove(); body.lastElementChild.remove(); newPage(); startTable(cont); }
+    };
+    startTable(false);
+    let run = 0;
+    const rows = all.filter(t => t.currency === cur).map(t => {
+      run += t.type === 'debt' ? t.amount : -t.amount;
+      return `<tr><td>${fmtDate(t.date)}</td><td>${esc(t.note) || (t.type === 'debt' ? 'دين' : 'تسديد')}</td><td class="n d">${t.type === 'debt' ? fmt(t.amount, cur) : ''}</td><td class="n p">${t.type === 'pay' ? fmt(t.amount, cur) : ''}</td><td class="n"><b>${run < 0 ? '-' : ''}${fmt(run, cur)}</b></td></tr>`;
+    });
+    const dSum = all.filter(t => t.currency === cur && t.type === 'debt').reduce((a, t) => a + t.amount, 0);
+    const pSum = all.filter(t => t.currency === cur && t.type === 'pay').reduce((a, t) => a + t.amount, 0);
+    rows.push(`<tr class="tot"><td colspan="2">المجموع / الرصيد النهائي</td><td class="n d">${fmt(dSum, cur)}</td><td class="n p">${fmt(pSum, cur)}</td><td class="n">${b[cur] < 0 ? '-' : ''}${fmt(b[cur], cur)}</td></tr>`);
+    for (const r of rows) {
+      tbody.insertAdjacentHTML('beforeend', r);
+      if (!fits()) {
+        tbody.lastElementChild.remove();
+        if (!tbody.children.length) { body.lastElementChild.remove(); body.lastElementChild.remove(); }
+        newPage(); startTable(true); tbody.insertAdjacentHTML('beforeend', r);
+      }
+    }
+  }
+  pages.forEach((pg, i) => pg.querySelector('.pn').textContent = `صفحة ${i + 1} من ${pages.length}`);
+  return { host, pages };
+}
+async function makeStatementPdf(c) {
+  const { host, pages } = buildPdfPages(c);
+  try {
+    const pdf = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', compress: true });
+    for (let i = 0; i < pages.length; i++) {
+      const img = await window.htmlToImage.toJpeg(pages[i], { pixelRatio: 2, quality: 0.92, backgroundColor: '#ffffff', width: 794, height: 1123 });
+      if (i) pdf.addPage();
+      pdf.addImage(img, 'JPEG', 0, 0, 210, 297);
+    }
+    pdf.setProperties({ title: 'كشف حساب ' + c.name });
+    return pdf;
+  } finally { host.remove(); }
+}
+async function sharePdf(c) {
+  const busy = $('#busy'); busy.classList.add('on');
+  try {
+    const pdf = await makeStatementPdf(c);
+    const name = `كشف-حساب-${c.name.replace(/[\\/:*?"<>|\s]+/g, '-')}-${today()}.pdf`;
+    const Fs = plug('Filesystem'), Share = plug('Share');
+    if (isNative() && Fs && Share) {
+      const data = pdf.output('datauristring').split(',')[1];
+      const r = await Fs.writeFile({ path: name, data, directory: 'CACHE' });
+      busy.classList.remove('on');
+      await Share.share({ title: 'كشف حساب ' + c.name, url: r.uri, dialogTitle: 'إرسال كشف الحساب' });
+    } else {
+      const blob = pdf.output('blob');
+      const file = new File([blob], name, { type: 'application/pdf' });
+      busy.classList.remove('on');
+      if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: 'كشف حساب ' + c.name });
+      else pdf.save(name);
+    }
+  } catch (e) {
+    if (!/cancel|abort/i.test(String(e && (e.message || e.name)))) { console.error(e); toast('صار خطأ بتجهيز الـ PDF'); }
+  } finally { busy.classList.remove('on'); }
+}
+
+/* ========== logo ========== */
+function renderLogo() {
+  const ph = $('#logoPh');
+  ph.innerHTML = S.meta.logo ? `<img src="${S.meta.logo}" alt="">` : 'بدون شعار';
+  $('#logoDel').style.display = S.meta.logo ? '' : 'none';
+}
+function loadLogo(file) {
+  const img = new Image(); const url = URL.createObjectURL(file);
+  img.onload = async () => {
+    const M = 320, k = Math.min(1, M / Math.max(img.width, img.height));
+    const cv = document.createElement('canvas'); cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
+    cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+    URL.revokeObjectURL(url);
+    await setMeta('logo', cv.toDataURL('image/png')); renderLogo(); toast('انحفظ الشعار');
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); toast('الصورة ما تنفتح'); };
+  img.src = url;
 }
 
 /* ========== navigation ========== */
@@ -608,6 +759,9 @@ $('#cpBody').onclick = e => {
 };
 $('#saveShop').onclick = async () => { await setMeta('shopName', $('#shopName').value.trim()); await setMeta('shopPhone', $('#shopPhone').value.trim()); toast('انحفظ'); };
 $('#exportBtn').onclick = exportBackup;
+$('#logoPick').onclick = () => $('#logoFile').click();
+$('#logoFile').onchange = e => { const f = e.target.files[0]; if (f) loadLogo(f); e.target.value = ''; };
+$('#logoDel').onclick = async () => { if (confirm('تشيل الشعار؟')) { await setMeta('logo', ''); renderLogo(); } };
 $('#importBtn').onclick = () => $('#importFile').click();
 $('#importFile').onchange = e => { const f = e.target.files[0]; if (f) importBackup(f); e.target.value = ''; };
 document.addEventListener('keydown', e => { if (e.key === 'Escape') goBack(); });
